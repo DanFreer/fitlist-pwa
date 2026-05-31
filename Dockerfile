@@ -1,18 +1,17 @@
 FROM node:20-alpine
 
+# bcrypt needs native build tools on Alpine
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+COPY package.json ./
+RUN npm install --omit=dev && npm cache clean --force
 
-# Install dependencies
-RUN npm install --production
-
-# Copy app code
 COPY . .
 
-# Expose port
+RUN test -d node_modules/dotenv
+
 EXPOSE 4173
 
-# Start the server
 CMD ["npm", "start"]

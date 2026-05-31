@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 
 const PORT = process.env.PORT || 4173;
+const HOST = process.env.HOST || '0.0.0.0';
 const JWT_SECRET = process.env.JWT_SECRET || 'fitlist-secret';
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://fitlist:fitlist@localhost:5432/fitlist';
 
@@ -242,8 +243,8 @@ app.get('*', (req, res) => {
 });
 
 initDb().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Fit List backend running on http://localhost:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`Fit List backend running on http://${HOST}:${PORT}`);
   });
 }).catch(error => {
   console.error('Failed to initialize database', error);
