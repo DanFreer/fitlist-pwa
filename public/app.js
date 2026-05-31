@@ -267,7 +267,13 @@ window.addEventListener('load', async () => {
 
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        if (reg.update) reg.update();
+      })
+      .catch(err => {
+        console.warn('Service worker registration failed', err);
+      });
   }
 }
 

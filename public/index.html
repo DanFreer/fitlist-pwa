@@ -148,13 +148,13 @@
           <div id="family-title">Family Gift Picker</div>
           <div id="family-sub">Claim gifts so nobody buys the same thing twice</div>
         </div>
-        <button class="topbtn" onclick="closeFamilyView()">âœ• Close</button>
+        <button class="topbtn" onclick="closeFamilyView()">Close</button>
       </div>
     </div>
     <!-- Name step -->
     <div id="family-name-step">
       <div id="family-name-inner">
-        <div style="font-size:52px;margin-bottom:16px;">ðŸ‘‹</div>
+        <div style="font-size:52px;margin-bottom:16px;"></div>
         <div style="font-family:var(--fh);font-size:22px;font-weight:900;margin-bottom:8px;">Who's shopping?</div>
         <div style="font-size:13px;color:#888;margin-bottom:24px;">Enter your name so the family knows what's been claimed.</div>
         <input class="modal-input" id="family-name-input" type="text" placeholder="e.g. Grandma Sue, Uncle Rob" onkeydown="if(event.key==='Enter')startBrowsing()"/>
@@ -194,7 +194,7 @@
 <div class="modal-overlay" id="add-kid-modal">
   <div class="modal">
     <div class="modal-title">Add a Kid</div>
-    <input class="modal-input" id="add-kid-input" type="text" placeholder="Nameâ€¦" onkeydown="if(event.key==='Enter')confirmAddKid()"/>
+    <input class="modal-input" id="add-kid-input" type="text" placeholder="Name" onkeydown="if(event.key==='Enter')confirmAddKid()"/>
     <div class="modal-btns">
       <button class="modal-btn-primary" onclick="confirmAddKid()">Add</button>
       <button class="modal-btn-secondary" onclick="closeModal('add-kid-modal')">Cancel</button>

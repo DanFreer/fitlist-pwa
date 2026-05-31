@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: fitlist-db
+    environment:
+      POSTGRES_USER: fitlist
+      POSTGRES_PASSWORD: fitlist
+      POSTGRES_DB: fitlist
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fitlist"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: fitlist-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://fitlist:fitlist@postgres:5432/fitlist
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-key}
+      PORT: 4173
+    ports:
+      - "4173:4173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
