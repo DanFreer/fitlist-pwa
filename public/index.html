@@ -24,7 +24,20 @@
     <button id="install-btn">Install</button>
     <button id="install-dismiss">Ã—</button>
   </div>
-
+  <div class="modal-overlay" id="auth-modal">
+    <div class="modal">
+      <div class="modal-title" id="auth-title">Sign In</div>
+      <div class="modal-sub" id="auth-sub">Sync your list across devices with your Pi backend.</div>
+      <input class="modal-input" id="auth-username" type="text" placeholder="Username" autocomplete="username" />
+      <input class="modal-input" id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
+      <div class="modal-btns">
+        <button class="modal-btn-primary" id="auth-submit">Sign In</button>
+        <button class="modal-btn-secondary" id="auth-toggle">Create account</button>
+      </div>
+      <div id="auth-error" style="display:none;color:#ff6b6b;font-size:12px;margin-top:10px;text-align:center;"></div>
+      <div style="font-size:12px;color:#999;margin-top:10px;text-align:center;">Use local mode by closing this dialog. Sign in for sync.</div>
+    </div>
+  </div>
   <!-- Top bar -->
   <div id="topbar">
     <div id="topbar-left">
