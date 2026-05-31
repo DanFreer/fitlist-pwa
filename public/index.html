@@ -20,9 +20,9 @@
 
   <!-- Install banner -->
   <div id="install-banner">
-    <span id="install-text">ðŸ“² Add Fit List to your home screen</span>
+    <span id="install-text">Add Fit List to your home screen</span>
     <button id="install-btn">Install</button>
-    <button id="install-dismiss">Ã—</button>
+    <button id="install-dismiss"></button>
   </div>
   <div class="modal-overlay" id="auth-modal">
     <div class="modal">
@@ -41,7 +41,7 @@
   <!-- Top bar -->
   <div id="topbar">
     <div id="topbar-left">
-      <div id="app-title">ðŸ‘• Fit List</div>
+      <div id="app-title">Fit List</div>
       <div id="stats">
         <span id="stat-urgent" class="stat-pill" style="background:rgba(225,112,85,.2);color:#e17055;display:none"></span>
         <span id="stat-claimed" class="stat-pill" style="background:rgba(45,106,79,.2);color:#2d6a4f"></span>
@@ -50,7 +50,7 @@
     </div>
     <div id="topbar-right">
       <div id="user-btns"></div>
-      <button class="topbtn green" onclick="openFamilyView()">ðŸŽ Family</button>
+      <button class="topbtn green" onclick="openFamilyView()">Family</button>
       <button class="topbtn" onclick="shareAll()">Share All</button>
     </div>
   </div>
@@ -88,9 +88,9 @@
       <!-- Tabs -->
       <div id="tabs" style="display:none">
         <div id="tab-row">
-          <button class="tab active" data-tab="sizes" onclick="switchTab('sizes')">ðŸ‘— Sizes</button>
-          <button class="tab" data-tab="gifts" onclick="switchTab('gifts')">ðŸŽ Gifts <span id="urgent-badge" class="tab-badge" style="display:none"></span></button>
-          <button class="tab" data-tab="history" onclick="switchTab('history')">ðŸ§¾ Bought</button>
+          <button class="tab active" data-tab="sizes" onclick="switchTab('sizes')">Sizes</button>
+          <button class="tab" data-tab="gifts" onclick="switchTab('gifts')">Gifts <span id="urgent-badge" class="tab-badge" style="display:none"></span></button>
+          <button class="tab" data-tab="history" onclick="switchTab('history')">Bought</button>
         </div>
       </div>
 
@@ -116,9 +116,9 @@
             <span class="section-sub" id="gifts-sub"></span>
           </div>
           <div class="add-row">
-            <input class="add-input" id="gift-input" type="text" placeholder="Add a gift ideaâ€¦" onkeydown="if(event.key==='Enter')addGift()"/>
-            <label class="urgent-check"><input type="checkbox" id="gift-urgent"/> âš¡ Urgent</label>
-            <button class="add-btn" onclick="addGift()">+ Add</button>
+            <input class="add-input" id="gift-input" type="text" placeholder="Add a gift idea!" onkeydown="if(event.key==='Enter')addGift()"/>
+            <label class="urgent-check"><input type="checkbox" id="gift-urgent"/>Urgent</label>
+            <button class="add-btn" onclick="addGift()">Add</button>
           </div>
           <div id="gifts-list"></div>
         </div>
@@ -130,13 +130,13 @@
           <div class="section-head"><div class="section-bar" id="history-bar"></div><div class="section-title">Recently Bought</div><span class="section-sub">prevents duplicate gifts</span></div>
           <div class="add-row">
             <input class="add-input" id="buy-input" type="text" placeholder="e.g. Blue hoodie size 10 â€“ Target" onkeydown="if(event.key==='Enter')addBuy()"/>
-            <button class="add-btn" onclick="addBuy()">+ Log</button>
+            <button class="add-btn" onclick="addBuy()">Log</button>
           </div>
           <div id="buys-list"></div>
         </div>
       </div>
 
-      <div id="no-kid" class="empty" style="padding-top:60px">â† Select a child or tap + to add one</div>
+      <div id="no-kid" class="empty" style="padding-top:60px">Select a child or tap + to add one</div>
     </div>
   </div>
 
@@ -145,7 +145,7 @@
     <div id="family-header">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div>
-          <div id="family-title">ðŸŽ Family Gift Picker</div>
+          <div id="family-title">Family Gift Picker</div>
           <div id="family-sub">Claim gifts so nobody buys the same thing twice</div>
         </div>
         <button class="topbtn" onclick="closeFamilyView()">âœ• Close</button>
@@ -157,8 +157,8 @@
         <div style="font-size:52px;margin-bottom:16px;">ðŸ‘‹</div>
         <div style="font-family:var(--fh);font-size:22px;font-weight:900;margin-bottom:8px;">Who's shopping?</div>
         <div style="font-size:13px;color:#888;margin-bottom:24px;">Enter your name so the family knows what's been claimed.</div>
-        <input class="modal-input" id="family-name-input" type="text" placeholder="e.g. Grandma Sue, Uncle Robâ€¦" onkeydown="if(event.key==='Enter')startBrowsing()"/>
-        <button class="modal-btn-primary" style="width:100%;padding:13px;" onclick="startBrowsing()">See Gift List â†’</button>
+        <input class="modal-input" id="family-name-input" type="text" placeholder="e.g. Grandma Sue, Uncle Rob" onkeydown="if(event.key==='Enter')startBrowsing()"/>
+        <button class="modal-btn-primary" style="width:100%;padding:13px;" onclick="startBrowsing()">See Gift List </button>
       </div>
     </div>
     <!-- Browse step -->
@@ -185,7 +185,7 @@
     <div class="modal-sub">Copy and send to grandparents, relatives, or anyone shopping</div>
     <textarea class="share-textarea" id="share-text" readonly></textarea>
     <div class="modal-btns">
-      <button class="modal-btn-primary" onclick="copyShare()">ðŸ“‹ Copy</button>
+      <button class="modal-btn-primary" onclick="copyShare()">Copy</button>
       <button class="modal-btn-secondary" onclick="closeModal('share-modal')">Close</button>
     </div>
   </div>
@@ -207,7 +207,7 @@
     <div class="modal-title">Switch User</div>
     <div class="modal-sub" id="pin-modal-sub"></div>
     <input id="pin-input" type="password" maxlength="6" placeholder="PIN" onkeydown="if(event.key==='Enter')submitPin()"/>
-    <div id="pin-error" style="display:none">Wrong PIN â€” try again</div>
+    <div id="pin-error" style="display:none">Wrong PIN, try again</div>
     <div class="modal-btns" style="margin-top:14px;">
       <button class="modal-btn-primary" onclick="submitPin()">Unlock</button>
       <button class="modal-btn-secondary" onclick="closeModal('pin-modal')">Cancel</button>
