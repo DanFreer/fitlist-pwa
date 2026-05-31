@@ -176,6 +176,8 @@ function logout() {
   localStorage.removeItem('fitlist-displayName');
   renderUserBtns();
   openAuthModal('signin');
+  localStorage.removeItem('fitlist-v3');
+  location.reload();
 }
 
 function logoutSilent() {
@@ -185,7 +187,9 @@ function logoutSilent() {
   localStorage.removeItem('fitlist-token');
   localStorage.removeItem('fitlist-user');
   localStorage.removeItem('fitlist-displayName');
+  localStorage.removeItem('fitlist-v3');
   renderUserBtns();
+  location.reload();
 }
 
 async function refreshSession() {
