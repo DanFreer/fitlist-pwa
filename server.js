@@ -463,6 +463,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Redirect direct app.html requests to the SPA route
+app.get('/app.html', (req, res) => {
+  res.redirect(301, '/app');
+});
+
 // Serve SPA at /app (preserve SPA deep links)
 app.get('/app*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'app.html'));
