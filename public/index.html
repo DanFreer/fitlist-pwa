@@ -7,12 +7,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Fit List"/>
-<link rel="manifest" href="manifest.json"/>
-<link rel="apple-touch-icon" href="icon-192.png"/>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icon-192.png"/>
 <title>Fit List</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,500;0,700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./styles.css" />
+<link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
 
@@ -81,7 +81,7 @@
         </div>
         <div id="kid-actions">
           <button class="hdr-btn" onclick="shareKid()">Share</button>
-          <button class="hdr-btn danger" id="delete-kid-btn" onclick="confirmDeleteKid()">âœ•</button>
+            <button class="hdr-btn danger" id="delete-kid-btn" onclick="confirmDeleteKid()">×</button>
         </div>
       </div>
 
@@ -102,7 +102,7 @@
         </div>
         <div class="card">
           <div class="section-head"><div class="section-bar" id="style-bar"></div><div class="section-title">Style Notes</div><span class="section-sub">separate with commas</span></div>
-          <textarea class="field-input" id="style-input" placeholder="Loves dinosaurs, won't wear jeans, prefers athletic fitâ€¦" oninput="onStyleChange(this.value)" onblur="saveCurrentKid()"></textarea>
+          <textarea class="field-input" id="style-input" placeholder="Loves dinosaurs, won't wear jeans, prefers athletic fit…" oninput="onStyleChange(this.value)" onblur="saveCurrentKid()"></textarea>
           <div id="style-tags"></div>
         </div>
       </div>
@@ -129,7 +129,7 @@
         <div class="card">
           <div class="section-head"><div class="section-bar" id="history-bar"></div><div class="section-title">Recently Bought</div><span class="section-sub">prevents duplicate gifts</span></div>
           <div class="add-row">
-            <input class="add-input" id="buy-input" type="text" placeholder="e.g. Blue hoodie size 10 â€“ Target" onkeydown="if(event.key==='Enter')addBuy()"/>
+            <input class="add-input" id="buy-input" type="text" placeholder="e.g. Blue hoodie size 10 – Target" onkeydown="if(event.key==='Enter')addBuy()"/>
             <button class="add-btn" onclick="addBuy()">Log</button>
           </div>
           <div id="buys-list"></div>
@@ -159,6 +159,26 @@
         <div style="font-size:13px;color:#888;margin-bottom:24px;">Enter your name so the family knows what's been claimed.</div>
         <input class="modal-input" id="family-name-input" type="text" placeholder="e.g. Grandma Sue, Uncle Rob" onkeydown="if(event.key==='Enter')startBrowsing()"/>
         <button class="modal-btn-primary" style="width:100%;padding:13px;" onclick="startBrowsing()">See Gift List </button>
+      </div>
+    </div>
+    <div id="family-account-step" style="display:none">
+      <div id="family-account-inner">
+        <div style="font-size:52px;margin-bottom:16px;"></div>
+        <div style="font-family:var(--fh);font-size:22px;font-weight:900;margin-bottom:8px;">Find a family account</div>
+        <div style="font-size:13px;color:#888;margin-bottom:24px;">Search for a parent username or paste a shared invite code.</div>
+        <button class="modal-btn-secondary" style="width:100%;padding:13px;margin-bottom:12px;" onclick="createFamilyInvite()">Generate invite code</button>
+        <div id="family-invite-code" style="font-size:12px;color:#444;margin-top:0;margin-bottom:16px;word-break:break-all;"></div>
+        <input class="modal-input" id="family-account-input" type="text" placeholder="Search username or display name" onkeydown="if(event.key==='Enter')searchFamilyAccount()"/>
+        <button class="modal-btn-primary" style="width:100%;padding:13px;margin-top:12px;" onclick="searchFamilyAccount()">Search account</button>
+        <div style="font-size:12px;color:#999;margin-top:16px;margin-bottom:8px;">Or join with a family invite code</div>
+        <input class="modal-input" id="family-invite-input" type="text" placeholder="Invite code" onkeydown="if(event.key==='Enter')joinFamilyByCode()"/>
+        <button class="modal-btn-primary" style="width:100%;padding:13px;margin-top:12px;" onclick="joinFamilyByCode()">Join with code</button>
+        <div id="family-account-results" style="margin-top:16px"></div>
+        <div id="family-account-message" style="margin-top:12px;color:#999;font-size:13px;"></div>
+        <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="modal-btn-secondary" onclick="openFamilyBrowseWithoutAccount()">Browse without account</button>
+          <button class="modal-btn-secondary" onclick="resetFamilyView()">Clear search</button>
+        </div>
       </div>
     </div>
     <!-- Browse step -->
@@ -191,6 +211,18 @@
   </div>
 </div>
 
+<!-- Connected accounts modal -->
+<div class="modal-overlay" id="connected-modal">
+  <div class="modal">
+    <div class="modal-title">Connected Accounts</div>
+    <div class="modal-sub">Accounts that have approved access to your list.</div>
+    <div id="connected-list" style="max-height:40vh;overflow:auto;margin-top:8px"></div>
+    <div class="modal-btns">
+      <button class="modal-btn-secondary" onclick="closeConnectedAccounts()">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="add-kid-modal">
   <div class="modal">
     <div class="modal-title">Add a Kid</div>
@@ -212,12 +244,12 @@
       <button class="modal-btn-primary" onclick="submitPin()">Unlock</button>
       <button class="modal-btn-secondary" onclick="closeModal('pin-modal')">Cancel</button>
     </div>
-    <div style="font-size:10px;color:#ccc;margin-top:10px;">Demo: Parent 1 = 1234 Â· Partner = 5678</div>
+    <div style="font-size:10px;color:#ccc;margin-top:10px;">Demo: Parent 1 = 1234 · Partner = 5678</div>
   </div>
 </div>
 
 <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="handlePhoto(this)"/>
 
-<script src="./app.js" defer></script>
+<script src="/app.js" defer></script>
 </body>
 </html>

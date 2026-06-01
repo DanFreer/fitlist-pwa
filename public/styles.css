@@ -180,6 +180,10 @@ textarea.field-input{resize:vertical;min-height:80px;line-height:1.6;}
 .ill-buy-btn{background:transparent;border:1.5px dashed #ccc;color:#999;border-radius:7px;
   padding:4px 12px;font-size:12px;font-weight:600;}
 
+.family-account-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1.5px solid #f0f0f0;border-radius:14px;margin-bottom:10px;background:#fff;gap:12px;}
+.family-account-name{font-size:15px;font-weight:700;}
+.family-account-username{font-size:12px;color:#888;margin-top:2px;}
+
 /* ── Buy history ── */
 .buy-card{display:flex;align-items:center;justify-content:space-between;
   background:#fafafa;border:1.5px solid #f0f0f0;border-radius:10px;padding:10px 13px;margin-bottom:7px;}

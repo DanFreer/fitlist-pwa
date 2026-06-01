@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 
 const PORT = process.env.PORT || 4173;
@@ -71,6 +72,38 @@ async function initDb() {
       kid_id TEXT NOT NULL REFERENCES kids(id) ON DELETE CASCADE,
       text TEXT,
       date TEXT
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS family_access (
+      id SERIAL PRIMARY KEY,
+      owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      member_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'approved',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(owner_id, member_id)
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS family_invites (
+      code TEXT PRIMARY KEY,
+      owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS family_requests (
+      id SERIAL PRIMARY KEY,
+      owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      message TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(owner_id, requester_id)
     );
   `);
 
@@ -191,6 +224,193 @@ app.get('/api/sync', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/users/search', async (req, res) => {
+  try {
+    const term = (req.query.term || '').trim();
+    if (!term) {
+      return res.json({ users: [] });
+    }
+    const like = `%${term}%`;
+    const result = await pool.query(
+      'SELECT username, display_name FROM users WHERE username ILIKE $1 OR display_name ILIKE $1 ORDER BY username LIMIT 20',
+      [like]
+    );
+    return res.json({ users: result.rows.map(r => ({ username: r.username, displayName: r.display_name })) });
+  } catch (error) {
+    console.error('User search error', error);
+    return res.status(500).json({ error: 'Unable to search users' });
+  }
+});
+
+app.post('/api/family/request', authMiddleware, async (req, res) => {
+  const { ownerUsername, message } = req.body || {};
+  if (!ownerUsername) {
+    return res.status(400).json({ error: 'ownerUsername is required' });
+  }
+  try {
+    const ownerResult = await pool.query('SELECT id FROM users WHERE username = $1', [ownerUsername.trim()]);
+    const owner = ownerResult.rows[0];
+    if (!owner) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+    if (owner.id === req.user.id) {
+      return res.status(400).json({ error: 'Cannot request access to your own account' });
+    }
+    await pool.query(
+      `INSERT INTO family_requests(owner_id, requester_id, message)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (owner_id, requester_id) DO UPDATE SET message = EXCLUDED.message, status = 'pending', created_at = NOW()`,
+      [owner.id, req.user.id, message || null]
+    );
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Family request error', error);
+    return res.status(500).json({ error: 'Unable to request access' });
+  }
+});
+
+app.post('/api/family/invite', authMiddleware, async (req, res) => {
+  try {
+    const code = crypto.randomBytes(5).toString('base64').replace(/[^A-Z0-9]/gi, '').slice(0, 10);
+    await pool.query(
+      'INSERT INTO family_invites(code, owner_id) VALUES ($1, $2)',
+      [code, req.user.id]
+    );
+    return res.json({ ok: true, code });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'Invite already exists; try again.' });
+    }
+    console.error('Family invite error', error);
+    return res.status(500).json({ error: 'Unable to create invite' });
+  }
+});
+
+app.post('/api/family/join', authMiddleware, async (req, res) => {
+  const { code } = req.body || {};
+  if (!code) {
+    return res.status(400).json({ error: 'Invite code is required' });
+  }
+  try {
+    const inviteResult = await pool.query('SELECT owner_id FROM family_invites WHERE code = $1', [code.trim()]);
+    const invite = inviteResult.rows[0];
+    if (!invite) {
+      return res.status(404).json({ error: 'Invite code not found' });
+    }
+    if (invite.owner_id === req.user.id) {
+      return res.status(400).json({ error: 'Cannot join your own invite' });
+    }
+    await pool.query(
+      `INSERT INTO family_access(owner_id, member_id, status)
+       VALUES ($1, $2, 'approved')
+       ON CONFLICT (owner_id, member_id) DO UPDATE SET status = 'approved'`,
+      [invite.owner_id, req.user.id]
+    );
+    const ownerResult = await pool.query('SELECT username, display_name FROM users WHERE id = $1', [invite.owner_id]);
+    const owner = ownerResult.rows[0];
+    return res.json({ ok: true, owner: { username: owner.username, displayName: owner.display_name, ownerId: invite.owner_id } });
+  } catch (error) {
+    console.error('Family join error', error);
+    return res.status(500).json({ error: 'Unable to join family' });
+  }
+});
+
+// Member can remove their access to an owner
+app.post('/api/family/remove', authMiddleware, async (req, res) => {
+  const { ownerId } = req.body || {};
+  if (!ownerId) return res.status(400).json({ error: 'ownerId is required' });
+  try {
+    await pool.query('DELETE FROM family_access WHERE owner_id = $1 AND member_id = $2', [ownerId, req.user.id]);
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Family remove error', error);
+    return res.status(500).json({ error: 'Unable to remove access' });
+  }
+});
+
+// Owner can revoke a member's access
+app.delete('/api/family/access/:memberId', authMiddleware, async (req, res) => {
+  const memberId = parseInt(req.params.memberId, 10);
+  if (!memberId) return res.status(400).json({ error: 'Invalid member ID' });
+  try {
+    await pool.query('DELETE FROM family_access WHERE owner_id = $1 AND member_id = $2', [req.user.id, memberId]);
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Family revoke error', error);
+    return res.status(500).json({ error: 'Unable to revoke access' });
+  }
+});
+
+app.get('/api/family/owners', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT users.id AS owner_id, users.username, users.display_name
+       FROM family_access
+       JOIN users ON users.id = family_access.owner_id
+       WHERE family_access.member_id = $1 AND family_access.status = 'approved'
+       ORDER BY users.username`,
+      [req.user.id]
+    );
+    return res.json({ owners: result.rows.map(r => ({ ownerId: r.owner_id, username: r.username, displayName: r.display_name })) });
+  } catch (error) {
+    console.error('Family owners error', error);
+    return res.status(500).json({ error: 'Unable to load connected accounts' });
+  }
+});
+
+app.get('/api/family/owner/:ownerId', authMiddleware, async (req, res) => {
+  const ownerId = parseInt(req.params.ownerId, 10);
+  if (!ownerId) {
+    return res.status(400).json({ error: 'Invalid owner ID' });
+  }
+  try {
+    if (ownerId !== req.user.id) {
+      const accessResult = await pool.query(
+        'SELECT id FROM family_access WHERE owner_id = $1 AND member_id = $2 AND status = $3',
+        [ownerId, req.user.id, 'approved']
+      );
+      if (!accessResult.rows.length) {
+        return res.status(403).json({ error: 'Access not approved' });
+      }
+    }
+    const ownerResult = await pool.query('SELECT username, display_name FROM users WHERE id = $1', [ownerId]);
+    const owner = ownerResult.rows[0];
+    if (!owner) {
+      return res.status(404).json({ error: 'Owner account not found' });
+    }
+    const kidsRes = await pool.query('SELECT id, name, age, emoji, color, photo, style, sizes FROM kids WHERE user_id = $1 ORDER BY name', [ownerId]);
+    const kidIds = kidsRes.rows.map(k => k.id);
+    const giftsRes = await pool.query('SELECT id, kid_id, text, urgent, claimed_by FROM gifts WHERE kid_id = ANY($1)', [kidIds.length ? kidIds : ['']]);
+    const buysRes = await pool.query('SELECT id, kid_id, text, date FROM buys WHERE kid_id = ANY($1)', [kidIds.length ? kidIds : ['']]);
+    const giftsByKid = {};
+    giftsRes.rows.forEach(g => {
+      giftsByKid[g.kid_id] = giftsByKid[g.kid_id] || [];
+      giftsByKid[g.kid_id].push(g);
+    });
+    const buysByKid = {};
+    buysRes.rows.forEach(b => {
+      buysByKid[b.kid_id] = buysByKid[b.kid_id] || [];
+      buysByKid[b.kid_id].push(b);
+    });
+    const kids = kidsRes.rows.map(k => ({
+      id: k.id,
+      name: k.name,
+      age: k.age,
+      emoji: k.emoji,
+      color: k.color,
+      photo: k.photo,
+      style: k.style,
+      sizes: k.sizes || {},
+      gifts: giftsByKid[k.id] || [],
+      buys: buysByKid[k.id] || []
+    }));
+    return res.json({ owner: { username: owner.username, displayName: owner.display_name, ownerId }, kids });
+  } catch (error) {
+    console.error('Family owner load error', error);
+    return res.status(500).json({ error: 'Unable to load family account' });
+  }
+});
+
 app.post('/api/sync', authMiddleware, async (req, res) => {
   const { kids = [] } = req.body || {};
   if (!Array.isArray(kids)) {
@@ -238,8 +458,19 @@ app.post('/api/sync', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('*', (req, res) => {
+// Landing page at root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+});
+
+// Serve SPA at /app (preserve SPA deep links)
+app.get('/app*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Fallback to landing for other routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
 
 initDb().then(() => {
