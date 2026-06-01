@@ -1,7 +1,8 @@
-const CACHE = 'fitlist-v1';
+const CACHE = 'fitlist-v2';
 const ASSETS = [
   './',
   './index.html',
+  './app.html',
   './styles.css',
   './app.js',
   './manifest.json',
