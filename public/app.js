@@ -15,7 +15,6 @@ const SIZE_FIELDS = [
 let kids = [];
 let activeId = null;
 let deferredInstall = null;
-let authMode = 'signin';
 let familyUser = '';
 let familyFilter = 'all';
 let familyOwner = null;
@@ -76,99 +75,6 @@ async function fetchJson(url, opts = {}) {
   return fetch(url, opts);
 }
 
-function showAuthError(message) {
-  const el = document.getElementById('auth-error');
-  el.textContent = message;
-  el.style.display = 'block';
-}
-
-function clearAuthError() {
-  const el = document.getElementById('auth-error');
-  el.textContent = '';
-  el.style.display = 'none';
-}
-
-function openAuthModal(mode = 'signin') {
-  authMode = mode;
-  const title = mode === 'signin' ? 'Sign In' : 'Create account';
-  const submitText = mode === 'signin' ? 'Sign In' : 'Register';
-  const toggleText = mode === 'signin' ? 'Create account' : 'Have an account? Sign in';
-  document.getElementById('auth-title').textContent = title;
-  document.getElementById('auth-submit').textContent = submitText;
-  document.getElementById('auth-toggle').textContent = toggleText;
-  document.getElementById('auth-username').value = '';
-  document.getElementById('auth-password').value = '';
-  clearAuthError();
-  document.getElementById('auth-modal').classList.add('open');
-  setTimeout(() => document.getElementById('auth-username').focus(), 100);
-}
-
-function closeAuthModal() {
-  document.getElementById('auth-modal').classList.remove('open');
-}
-
-async function login() {
-  const username = document.getElementById('auth-username').value.trim();
-  const password = document.getElementById('auth-password').value;
-  if (!username || !password) {
-    return showAuthError('Enter both username and password.');
-  }
-  try {
-    const res = await fetchJson(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      return showAuthError(data?.error || 'Login failed');
-    }
-    const data = await res.json();
-    session.token = data.token;
-    session.username = data.username;
-    session.displayName = data.displayName || data.username;
-    localStorage.setItem('fitlist-token', session.token);
-    localStorage.setItem('fitlist-user', session.username);
-    localStorage.setItem('fitlist-displayName', session.displayName);
-    renderUserBtns();
-    await refreshSession();
-    closeAuthModal();
-  } catch (error) {
-    showAuthError('Unable to reach the backend.');
-  }
-}
-
-async function registerAccount() {
-  const username = document.getElementById('auth-username').value.trim();
-  const password = document.getElementById('auth-password').value;
-  if (!username || !password) {
-    return showAuthError('Enter both username and password.');
-  }
-  try {
-    const res = await fetchJson(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      return showAuthError(data?.error || 'Registration failed');
-    }
-    const data = await res.json();
-    session.token = data.token;
-    session.username = data.username;
-    session.displayName = data.displayName || data.username;
-    localStorage.setItem('fitlist-token', session.token);
-    localStorage.setItem('fitlist-user', session.username);
-    localStorage.setItem('fitlist-displayName', session.displayName);
-    renderUserBtns();
-    await refreshSession();
-    closeAuthModal();
-  } catch (error) {
-    showAuthError('Unable to reach the backend.');
-  }
-}
-
 function logout() {
   session.token = '';
   session.username = '';
@@ -186,7 +92,7 @@ function logout() {
   document.getElementById('tabs').style.display = 'none';
   document.getElementById('no-kid').style.display = 'block';
   renderUserBtns();
-  openAuthModal('signin');
+  window.location.href = '/';
 }
 
 function logoutSilent() {
@@ -206,6 +112,7 @@ function logoutSilent() {
   document.getElementById('tabs').style.display = 'none';
   document.getElementById('no-kid').style.display = 'block';
   renderUserBtns();
+  window.location.href = '/';
 }
 
 async function refreshSession() {
@@ -281,7 +188,8 @@ window.addEventListener('load', async () => {
     await refreshSession();
   }
   if (!session.token) {
-    openAuthModal('signin');
+    window.location.href = '/';
+    return;
   }
 });
 
@@ -313,17 +221,6 @@ document.getElementById('install-dismiss').onclick = () => {
   document.getElementById('install-banner').classList.remove('show');
 };
 
-document.getElementById('auth-submit').onclick = () => {
-  if (authMode === 'signin') {
-    login();
-  } else {
-    registerAccount();
-  }
-};
-document.getElementById('auth-toggle').onclick = () => {
-  openAuthModal(authMode === 'signin' ? 'register' : 'signin');
-};
-
 document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
 });
@@ -349,13 +246,9 @@ function renderSidebar() {
 function renderUserBtns() {
   const el = document.getElementById('user-btns');
   if (session.username) {
-    el.innerHTML = `
-      <span style="color:#fff;font-size:12px;">Hi ${session.displayName || session.username}</span>
-      <button class="topbtn" onclick="openConnectedAccounts()">Connected</button>
-      <button class="topbtn" onclick="logout()">Logout</button>
-    `;
+    el.innerHTML = `<button class="topbtn" onclick="logout()">Logout</button>`;
   } else {
-    el.innerHTML = `<button class="topbtn green" onclick="openAuthModal('signin')">Sign In</button>`;
+    el.innerHTML = '';
   }
 }
 

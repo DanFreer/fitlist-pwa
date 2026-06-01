@@ -460,17 +460,17 @@ app.post('/api/sync', authMiddleware, async (req, res) => {
 
 // Landing page at root
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Serve SPA at /app (preserve SPA deep links)
 app.get('/app*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'app.html'));
 });
 
 // Fallback to landing for other routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 initDb().then(() => {

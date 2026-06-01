@@ -1,255 +1,46 @@
-﻿<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<meta name="theme-color" content="#1C1C1E"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="Fit List"/>
-<link rel="manifest" href="/manifest.json"/>
-<link rel="apple-touch-icon" href="/icon-192.png"/>
-<title>Fit List</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,500;0,700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/styles.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fit List — Family gift & size organizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,500;0,700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    :root { --fh: "Playfair Display", serif; --dark900: #1C1C1E; --gold: #FFD700; }
+    body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(180deg,#f8fafc,#fff);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;padding:0;}
+    .landing{max-width:900px;padding:40px;background:transparent;text-align:center}
+    .hero{font-family:var(--fh);font-size:34px;margin-bottom:8px;color:#222;font-weight:900}
+    .sub{color:#666;margin-bottom:20px;font-size:16px}
+    .cta{display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+    .cta a{display:inline-block;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700;border:none;cursor:pointer}
+    .cta .primary{background:var(--dark900);color:var(--gold)}
+    .cta .primary:hover{opacity:0.9}
+    .cta .secondary{background:#f0f0f0;color:#333}
+    .cta .secondary:hover{background:#e0e0e0}
+    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:28px;text-align:left}
+    .feature{background:#fff;border:1px solid #f0f0f0;padding:14px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+    .feature h4{margin:0 0 6px;font-size:15px;font-weight:700;color:#222}
+    .feature div{font-size:13px;color:#888;line-height:1.5}
+    .brand{font-family:var(--fh);font-weight:900;color:var(--gold);font-size:28px;margin-bottom:16px}
+  </style>
 </head>
 <body>
-
-<div id="app">
-
-  <!-- Install banner -->
-  <div id="install-banner">
-    <span id="install-text">Add Fit List to your home screen</span>
-    <button id="install-btn">Install</button>
-    <button id="install-dismiss"></button>
-  </div>
-  <div class="modal-overlay" id="auth-modal">
-    <div class="modal">
-      <div class="modal-title" id="auth-title">Sign In</div>
-      <div class="modal-sub" id="auth-sub">Sync your list across devices with your Pi backend.</div>
-      <input class="modal-input" id="auth-username" type="text" placeholder="Username" autocomplete="username" />
-      <input class="modal-input" id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
-      <div class="modal-btns">
-        <button class="modal-btn-primary" id="auth-submit">Sign In</button>
-        <button class="modal-btn-secondary" id="auth-toggle">Create account</button>
-      </div>
-      <div id="auth-error" style="display:none;color:#ff6b6b;font-size:12px;margin-top:10px;text-align:center;"></div>
-      <div style="font-size:12px;color:#999;margin-top:10px;text-align:center;">Use local mode by closing this dialog. Sign in for sync.</div>
+  <div class="landing">
+    <div class="brand">Fit List</div>
+    <div class="hero">Keep family gift ideas and sizes in one simple place</div>
+    <div class="sub">Share lists with relatives, avoid duplicate gifts, and always know the right size.</div>
+    <div class="cta">
+      <a class="primary" href="/app">Open the app</a>
+      <a class="secondary" href="/app">Sign in / Get started</a>
+    </div>
+    <div class="features">
+      <div class="feature"><h4>Share with family</h4><div>Invite grandparents or partners and let them claim gifts.</div></div>
+      <div class="feature"><h4>Sizes at a glance</h4><div>Track clothing sizes and style notes for each child.</div></div>
+      <div class="feature"><h4>Offline-friendly</h4><div>PWA-ready so lists stay available on your device.</div></div>
+      <div class="feature"><h4>Private by default</h4><div>Data is synced to your server — you control who sees it.</div></div>
     </div>
   </div>
-  <!-- Top bar -->
-  <div id="topbar">
-    <div id="topbar-left">
-      <div id="app-title">Fit List</div>
-      <div id="stats">
-        <span id="stat-urgent" class="stat-pill" style="background:rgba(225,112,85,.2);color:#e17055;display:none"></span>
-        <span id="stat-claimed" class="stat-pill" style="background:rgba(45,106,79,.2);color:#2d6a4f"></span>
-        <span id="stat-open"    class="stat-pill" style="background:rgba(255,255,255,.08);color:#888"></span>
-      </div>
-    </div>
-    <div id="topbar-right">
-      <div id="user-btns"></div>
-      <button class="topbtn green" onclick="openFamilyView()">Family</button>
-      <button class="topbtn" onclick="shareAll()">Share All</button>
-    </div>
-  </div>
-
-  <!-- Main layout -->
-  <div id="main">
-    <!-- Sidebar -->
-    <div id="sidebar">
-      <div id="kid-list"></div>
-      <button class="add-kid-btn" onclick="promptAddKid()">+</button>
-    </div>
-
-    <!-- Detail panel -->
-    <div id="detail">
-      <!-- Kid header -->
-      <div id="kid-header" style="display:none">
-        <div id="kid-avatar" onclick="triggerPhotoUpload()">
-          <span id="kid-avatar-emoji"></span>
-          <img id="kid-avatar-img" style="display:none"/>
-        </div>
-        <div id="kid-meta">
-          <input id="kid-name-input" type="text" autocomplete="off" oninput="onNameChange(this.value)" onblur="saveCurrentKid()"/>
-          <div id="kid-age-row">
-            <span id="kid-age-label">Age</span>
-            <input id="kid-age-input" type="text" maxlength="3" oninput="onAgeChange(this.value)" onblur="saveCurrentKid()"/>
-            <div id="color-row"></div>
-          </div>
-        </div>
-        <div id="kid-actions">
-          <button class="hdr-btn" onclick="shareKid()">Share</button>
-            <button class="hdr-btn danger" id="delete-kid-btn" onclick="confirmDeleteKid()">×</button>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <div id="tabs" style="display:none">
-        <div id="tab-row">
-          <button class="tab active" data-tab="sizes" onclick="switchTab('sizes')">Sizes</button>
-          <button class="tab" data-tab="gifts" onclick="switchTab('gifts')">Gifts <span id="urgent-badge" class="tab-badge" style="display:none"></span></button>
-          <button class="tab" data-tab="history" onclick="switchTab('history')">Bought</button>
-        </div>
-      </div>
-
-      <!-- Sizes tab -->
-      <div id="tab-sizes" class="tab-content active">
-        <div class="card">
-          <div class="section-head"><div class="section-bar" id="sizes-bar"></div><div class="section-title">Sizes</div></div>
-          <div class="size-grid" id="size-grid"></div>
-        </div>
-        <div class="card">
-          <div class="section-head"><div class="section-bar" id="style-bar"></div><div class="section-title">Style Notes</div><span class="section-sub">separate with commas</span></div>
-          <textarea class="field-input" id="style-input" placeholder="Loves dinosaurs, won't wear jeans, prefers athletic fit…" oninput="onStyleChange(this.value)" onblur="saveCurrentKid()"></textarea>
-          <div id="style-tags"></div>
-        </div>
-      </div>
-
-      <!-- Gifts tab -->
-      <div id="tab-gifts" class="tab-content">
-        <div class="card">
-          <div class="section-head">
-            <div class="section-bar" id="gifts-bar"></div>
-            <div class="section-title">Gift Ideas</div>
-            <span class="section-sub" id="gifts-sub"></span>
-          </div>
-          <div class="add-row">
-            <input class="add-input" id="gift-input" type="text" placeholder="Add a gift idea!" onkeydown="if(event.key==='Enter')addGift()"/>
-            <label class="urgent-check"><input type="checkbox" id="gift-urgent"/>Urgent</label>
-            <button class="add-btn" onclick="addGift()">Add</button>
-          </div>
-          <div id="gifts-list"></div>
-        </div>
-      </div>
-
-      <!-- History tab -->
-      <div id="tab-history" class="tab-content">
-        <div class="card">
-          <div class="section-head"><div class="section-bar" id="history-bar"></div><div class="section-title">Recently Bought</div><span class="section-sub">prevents duplicate gifts</span></div>
-          <div class="add-row">
-            <input class="add-input" id="buy-input" type="text" placeholder="e.g. Blue hoodie size 10 – Target" onkeydown="if(event.key==='Enter')addBuy()"/>
-            <button class="add-btn" onclick="addBuy()">Log</button>
-          </div>
-          <div id="buys-list"></div>
-        </div>
-      </div>
-
-      <div id="no-kid" class="empty" style="padding-top:60px">Select a child or tap + to add one</div>
-    </div>
-  </div>
-
-  <!-- Family gift view -->
-  <div id="family-view" style="position:fixed;inset:0;background:var(--surface);z-index:50;display:none;flex-direction:column;">
-    <div id="family-header">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div id="family-title">Family Gift Picker</div>
-          <div id="family-sub">Claim gifts so nobody buys the same thing twice</div>
-        </div>
-        <button class="topbtn" onclick="closeFamilyView()">Close</button>
-      </div>
-    </div>
-    <!-- Name step -->
-    <div id="family-name-step">
-      <div id="family-name-inner">
-        <div style="font-size:52px;margin-bottom:16px;"></div>
-        <div style="font-family:var(--fh);font-size:22px;font-weight:900;margin-bottom:8px;">Who's shopping?</div>
-        <div style="font-size:13px;color:#888;margin-bottom:24px;">Enter your name so the family knows what's been claimed.</div>
-        <input class="modal-input" id="family-name-input" type="text" placeholder="e.g. Grandma Sue, Uncle Rob" onkeydown="if(event.key==='Enter')startBrowsing()"/>
-        <button class="modal-btn-primary" style="width:100%;padding:13px;" onclick="startBrowsing()">See Gift List </button>
-      </div>
-    </div>
-    <div id="family-account-step" style="display:none">
-      <div id="family-account-inner">
-        <div style="font-size:52px;margin-bottom:16px;"></div>
-        <div style="font-family:var(--fh);font-size:22px;font-weight:900;margin-bottom:8px;">Find a family account</div>
-        <div style="font-size:13px;color:#888;margin-bottom:24px;">Search for a parent username or paste a shared invite code.</div>
-        <button class="modal-btn-secondary" style="width:100%;padding:13px;margin-bottom:12px;" onclick="createFamilyInvite()">Generate invite code</button>
-        <div id="family-invite-code" style="font-size:12px;color:#444;margin-top:0;margin-bottom:16px;word-break:break-all;"></div>
-        <input class="modal-input" id="family-account-input" type="text" placeholder="Search username or display name" onkeydown="if(event.key==='Enter')searchFamilyAccount()"/>
-        <button class="modal-btn-primary" style="width:100%;padding:13px;margin-top:12px;" onclick="searchFamilyAccount()">Search account</button>
-        <div style="font-size:12px;color:#999;margin-top:16px;margin-bottom:8px;">Or join with a family invite code</div>
-        <input class="modal-input" id="family-invite-input" type="text" placeholder="Invite code" onkeydown="if(event.key==='Enter')joinFamilyByCode()"/>
-        <button class="modal-btn-primary" style="width:100%;padding:13px;margin-top:12px;" onclick="joinFamilyByCode()">Join with code</button>
-        <div id="family-account-results" style="margin-top:16px"></div>
-        <div id="family-account-message" style="margin-top:12px;color:#999;font-size:13px;"></div>
-        <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="modal-btn-secondary" onclick="openFamilyBrowseWithoutAccount()">Browse without account</button>
-          <button class="modal-btn-secondary" onclick="resetFamilyView()">Clear search</button>
-        </div>
-      </div>
-    </div>
-    <!-- Browse step -->
-    <div id="family-browse">
-      <div id="my-claims-bar" style="display:none;">
-        <div id="my-claims-title"></div>
-        <div id="my-claims-chips"></div>
-      </div>
-      <div id="filter-row">
-        <button class="filter-chip active" data-filter="all" onclick="setFilter('all',this)">All</button>
-        <button class="filter-chip" data-filter="available" onclick="setFilter('available',this)">Available</button>
-        <button class="filter-chip" data-filter="mine" onclick="setFilter('mine',this)">Mine</button>
-        <button class="filter-chip" style="margin-left:auto;" onclick="resetFamilyView()">Change name</button>
-      </div>
-      <div id="family-list"></div>
-    </div>
-  </div>
-</div>
-
-<!-- Modals -->
-<div class="modal-overlay" id="share-modal">
-  <div class="modal">
-    <div class="modal-title" id="share-title"></div>
-    <div class="modal-sub">Copy and send to grandparents, relatives, or anyone shopping</div>
-    <textarea class="share-textarea" id="share-text" readonly></textarea>
-    <div class="modal-btns">
-      <button class="modal-btn-primary" onclick="copyShare()">Copy</button>
-      <button class="modal-btn-secondary" onclick="closeModal('share-modal')">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- Connected accounts modal -->
-<div class="modal-overlay" id="connected-modal">
-  <div class="modal">
-    <div class="modal-title">Connected Accounts</div>
-    <div class="modal-sub">Accounts that have approved access to your list.</div>
-    <div id="connected-list" style="max-height:40vh;overflow:auto;margin-top:8px"></div>
-    <div class="modal-btns">
-      <button class="modal-btn-secondary" onclick="closeConnectedAccounts()">Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="add-kid-modal">
-  <div class="modal">
-    <div class="modal-title">Add a Kid</div>
-    <input class="modal-input" id="add-kid-input" type="text" placeholder="Name" onkeydown="if(event.key==='Enter')confirmAddKid()"/>
-    <div class="modal-btns">
-      <button class="modal-btn-primary" onclick="confirmAddKid()">Add</button>
-      <button class="modal-btn-secondary" onclick="closeModal('add-kid-modal')">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="pin-modal">
-  <div class="modal" style="text-align:center;max-width:300px;">
-    <div class="modal-title">Switch User</div>
-    <div class="modal-sub" id="pin-modal-sub"></div>
-    <input id="pin-input" type="password" maxlength="6" placeholder="PIN" onkeydown="if(event.key==='Enter')submitPin()"/>
-    <div id="pin-error" style="display:none">Wrong PIN, try again</div>
-    <div class="modal-btns" style="margin-top:14px;">
-      <button class="modal-btn-primary" onclick="submitPin()">Unlock</button>
-      <button class="modal-btn-secondary" onclick="closeModal('pin-modal')">Cancel</button>
-    </div>
-    <div style="font-size:10px;color:#ccc;margin-top:10px;">Demo: Parent 1 = 1234 · Partner = 5678</div>
-  </div>
-</div>
-
-<input type="file" id="photo-input" accept="image/*" style="display:none" onchange="handlePhoto(this)"/>
-
-<script src="/app.js" defer></script>
 </body>
 </html>
