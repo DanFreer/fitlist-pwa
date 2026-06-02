@@ -5,7 +5,8 @@
   "description": "Progressive Web App shell for Fit List",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "icons": "node scripts/generate-icons.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",

@@ -15,6 +15,66 @@ const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://fitlist:fitlist@l
 const pool = new Pool({ connectionString: DATABASE_URL });
 const app = express();
 
+function mapGiftRow(g) {
+  return {
+    id: g.id,
+    text: g.text,
+    urgent: !!g.urgent,
+    claimedBy: g.claimed_by || null
+  };
+}
+
+function mapKidPayload(k, giftsByKid, buysByKid) {
+  return {
+    id: k.id,
+    name: k.name,
+    age: k.age,
+    emoji: k.emoji,
+    color: k.color,
+    photo: k.photo,
+    style: k.style,
+    sizes: k.sizes || {},
+    gifts: (giftsByKid[k.id] || []).map(mapGiftRow),
+    buys: (buysByKid[k.id] || []).map(b => ({ id: b.id, text: b.text, date: b.date }))
+  };
+}
+
+async function canAccessOwnerData(userId, ownerId) {
+  if (userId === ownerId) return true;
+  const result = await pool.query(
+    'SELECT 1 FROM family_access WHERE owner_id = $1 AND member_id = $2 AND status = $3',
+    [ownerId, userId, 'approved']
+  );
+  return result.rows.length > 0;
+}
+
+async function loadKidsForOwner(ownerId) {
+  const kidsRes = await pool.query(
+    'SELECT id, name, age, emoji, color, photo, style, sizes FROM kids WHERE user_id = $1 ORDER BY name',
+    [ownerId]
+  );
+  const kidIds = kidsRes.rows.map(k => k.id);
+  const giftsRes = await pool.query(
+    'SELECT id, kid_id, text, urgent, claimed_by FROM gifts WHERE kid_id = ANY($1)',
+    [kidIds.length ? kidIds : ['']]
+  );
+  const buysRes = await pool.query(
+    'SELECT id, kid_id, text, date FROM buys WHERE kid_id = ANY($1)',
+    [kidIds.length ? kidIds : ['']]
+  );
+  const giftsByKid = {};
+  giftsRes.rows.forEach(g => {
+    giftsByKid[g.kid_id] = giftsByKid[g.kid_id] || [];
+    giftsByKid[g.kid_id].push(g);
+  });
+  const buysByKid = {};
+  buysRes.rows.forEach(b => {
+    buysByKid[b.kid_id] = buysByKid[b.kid_id] || [];
+    buysByKid[b.kid_id].push(b);
+  });
+  return kidsRes.rows.map(k => mapKidPayload(k, giftsByKid, buysByKid));
+}
+
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -189,34 +249,7 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
 
 app.get('/api/sync', authMiddleware, async (req, res) => {
   try {
-    const kidsRes = await pool.query('SELECT id, name, age, emoji, color, photo, style, sizes FROM kids WHERE user_id = $1 ORDER BY name', [req.user.id]);
-    const kidIds = kidsRes.rows.map(k => k.id);
-    const giftsRes = await pool.query('SELECT id, kid_id, text, urgent, claimed_by FROM gifts WHERE kid_id = ANY($1)', [kidIds.length ? kidIds : ['']]);
-    const buysRes = await pool.query('SELECT id, kid_id, text, date FROM buys WHERE kid_id = ANY($1)', [kidIds.length ? kidIds : ['']]);
-
-    const giftsByKid = {};
-    giftsRes.rows.forEach(g => {
-      giftsByKid[g.kid_id] = giftsByKid[g.kid_id] || [];
-      giftsByKid[g.kid_id].push(g);
-    });
-    const buysByKid = {};
-    buysRes.rows.forEach(b => {
-      buysByKid[b.kid_id] = buysByKid[b.kid_id] || [];
-      buysByKid[b.kid_id].push(b);
-    });
-
-    const kids = kidsRes.rows.map(k => ({
-      id: k.id,
-      name: k.name,
-      age: k.age,
-      emoji: k.emoji,
-      color: k.color,
-      photo: k.photo,
-      style: k.style,
-      sizes: k.sizes || {},
-      gifts: giftsByKid[k.id] || [],
-      buys: buysByKid[k.id] || []
-    }));
+    const kids = await loadKidsForOwner(req.user.id);
     return res.json({ kids });
   } catch (error) {
     console.error('Sync error', error);
@@ -224,7 +257,7 @@ app.get('/api/sync', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/users/search', async (req, res) => {
+app.get('/api/users/search', authMiddleware, async (req, res) => {
   try {
     const term = (req.query.term || '').trim();
     if (!term) {
@@ -358,52 +391,155 @@ app.get('/api/family/owners', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/family/members', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT users.id AS member_id, users.username, users.display_name
+       FROM family_access
+       JOIN users ON users.id = family_access.member_id
+       WHERE family_access.owner_id = $1 AND family_access.status = 'approved'
+       ORDER BY users.username`,
+      [req.user.id]
+    );
+    return res.json({
+      members: result.rows.map(r => ({
+        memberId: r.member_id,
+        username: r.username,
+        displayName: r.display_name
+      }))
+    });
+  } catch (error) {
+    console.error('Family members error', error);
+    return res.status(500).json({ error: 'Unable to load members' });
+  }
+});
+
+app.get('/api/family/requests/incoming', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT fr.id, fr.message, fr.created_at,
+              u.username AS requester_username, u.display_name AS requester_display_name
+       FROM family_requests fr
+       JOIN users u ON u.id = fr.requester_id
+       WHERE fr.owner_id = $1 AND fr.status = 'pending'
+       ORDER BY fr.created_at DESC`,
+      [req.user.id]
+    );
+    return res.json({
+      requests: result.rows.map(r => ({
+        id: r.id,
+        message: r.message,
+        createdAt: r.created_at,
+        requesterUsername: r.requester_username,
+        requesterDisplayName: r.requester_display_name
+      }))
+    });
+  } catch (error) {
+    console.error('Family requests error', error);
+    return res.status(500).json({ error: 'Unable to load requests' });
+  }
+});
+
+app.post('/api/family/requests/:requestId/approve', authMiddleware, async (req, res) => {
+  const requestId = parseInt(req.params.requestId, 10);
+  if (!requestId) return res.status(400).json({ error: 'Invalid request ID' });
+  try {
+    const requestResult = await pool.query(
+      'SELECT id, owner_id, requester_id, status FROM family_requests WHERE id = $1',
+      [requestId]
+    );
+    const request = requestResult.rows[0];
+    if (!request || request.owner_id !== req.user.id) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: 'Request is no longer pending' });
+    }
+    await pool.query(
+      `INSERT INTO family_access(owner_id, member_id, status)
+       VALUES ($1, $2, 'approved')
+       ON CONFLICT (owner_id, member_id) DO UPDATE SET status = 'approved'`,
+      [request.owner_id, request.requester_id]
+    );
+    await pool.query(
+      "UPDATE family_requests SET status = 'approved' WHERE id = $1",
+      [requestId]
+    );
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Family approve error', error);
+    return res.status(500).json({ error: 'Unable to approve request' });
+  }
+});
+
+app.post('/api/family/requests/:requestId/deny', authMiddleware, async (req, res) => {
+  const requestId = parseInt(req.params.requestId, 10);
+  if (!requestId) return res.status(400).json({ error: 'Invalid request ID' });
+  try {
+    const requestResult = await pool.query(
+      'SELECT id, owner_id, status FROM family_requests WHERE id = $1',
+      [requestId]
+    );
+    const request = requestResult.rows[0];
+    if (!request || request.owner_id !== req.user.id) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+    await pool.query(
+      "UPDATE family_requests SET status = 'denied' WHERE id = $1",
+      [requestId]
+    );
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Family deny error', error);
+    return res.status(500).json({ error: 'Unable to deny request' });
+  }
+});
+
+app.put('/api/family/owner/:ownerId/gifts/:giftId/claim', authMiddleware, async (req, res) => {
+  const ownerId = parseInt(req.params.ownerId, 10);
+  const giftId = req.params.giftId;
+  const claimedBy = req.body?.claimedBy === null || req.body?.claimedBy === ''
+    ? null
+    : (req.body?.claimedBy || '').trim() || null;
+  if (!ownerId || !giftId) {
+    return res.status(400).json({ error: 'Invalid owner or gift ID' });
+  }
+  try {
+    if (!(await canAccessOwnerData(req.user.id, ownerId))) {
+      return res.status(403).json({ error: 'Access not approved' });
+    }
+    const giftResult = await pool.query(
+      `SELECT gifts.id FROM gifts
+       JOIN kids ON kids.id = gifts.kid_id
+       WHERE gifts.id = $1 AND kids.user_id = $2`,
+      [giftId, ownerId]
+    );
+    if (!giftResult.rows.length) {
+      return res.status(404).json({ error: 'Gift not found' });
+    }
+    await pool.query('UPDATE gifts SET claimed_by = $1 WHERE id = $2', [claimedBy, giftId]);
+    return res.json({ ok: true, claimedBy });
+  } catch (error) {
+    console.error('Gift claim error', error);
+    return res.status(500).json({ error: 'Unable to update claim' });
+  }
+});
+
 app.get('/api/family/owner/:ownerId', authMiddleware, async (req, res) => {
   const ownerId = parseInt(req.params.ownerId, 10);
   if (!ownerId) {
     return res.status(400).json({ error: 'Invalid owner ID' });
   }
   try {
-    if (ownerId !== req.user.id) {
-      const accessResult = await pool.query(
-        'SELECT id FROM family_access WHERE owner_id = $1 AND member_id = $2 AND status = $3',
-        [ownerId, req.user.id, 'approved']
-      );
-      if (!accessResult.rows.length) {
-        return res.status(403).json({ error: 'Access not approved' });
-      }
+    if (!(await canAccessOwnerData(req.user.id, ownerId))) {
+      return res.status(403).json({ error: 'Access not approved' });
     }
     const ownerResult = await pool.query('SELECT username, display_name FROM users WHERE id = $1', [ownerId]);
     const owner = ownerResult.rows[0];
     if (!owner) {
       return res.status(404).json({ error: 'Owner account not found' });
     }
-    const kidsRes = await pool.query('SELECT id, name, age, emoji, color, photo, style, sizes FROM kids WHERE user_id = $1 ORDER BY name', [ownerId]);
-    const kidIds = kidsRes.rows.map(k => k.id);
-    const giftsRes = await pool.query('SELECT id, kid_id, text, urgent, claimed_by FROM gifts WHERE kid_id = ANY($1)', [kidIds.length ? kidIds : ['']]);
-    const buysRes = await pool.query('SELECT id, kid_id, text, date FROM buys WHERE kid_id = ANY($1)', [kidIds.length ? kidIds : ['']]);
-    const giftsByKid = {};
-    giftsRes.rows.forEach(g => {
-      giftsByKid[g.kid_id] = giftsByKid[g.kid_id] || [];
-      giftsByKid[g.kid_id].push(g);
-    });
-    const buysByKid = {};
-    buysRes.rows.forEach(b => {
-      buysByKid[b.kid_id] = buysByKid[b.kid_id] || [];
-      buysByKid[b.kid_id].push(b);
-    });
-    const kids = kidsRes.rows.map(k => ({
-      id: k.id,
-      name: k.name,
-      age: k.age,
-      emoji: k.emoji,
-      color: k.color,
-      photo: k.photo,
-      style: k.style,
-      sizes: k.sizes || {},
-      gifts: giftsByKid[k.id] || [],
-      buys: buysByKid[k.id] || []
-    }));
+    const kids = await loadKidsForOwner(ownerId);
     return res.json({ owner: { username: owner.username, displayName: owner.display_name, ownerId }, kids });
   } catch (error) {
     console.error('Family owner load error', error);

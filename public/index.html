@@ -4,43 +4,95 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Fit List — Family gift & size organizer</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,500;0,700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/styles.css" />
   <style>
-    :root { --fh: "Playfair Display", serif; --dark900: #1C1C1E; --gold: #FFD700; }
-    body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(180deg,#f8fafc,#fff);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;padding:0;}
-    .landing{max-width:900px;padding:40px;background:transparent;text-align:center}
+    :root { --fh: "Playfair Display", serif; --dark900: #1C1C1E; --gold: #FFD166; }
+    body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(180deg,#f8fafc,#fff);font-family:var(--ff, "DM Sans", sans-serif);margin:0;padding:20px;}
+    .landing{max-width:920px;width:100%;padding:24px;text-align:center}
     .hero{font-family:var(--fh);font-size:34px;margin-bottom:8px;color:#222;font-weight:900}
     .sub{color:#666;margin-bottom:20px;font-size:16px}
-    .cta{display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap}
-    .cta a{display:inline-block;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700;border:none;cursor:pointer}
-    .cta .primary{background:var(--dark900);color:var(--gold)}
-    .cta .primary:hover{opacity:0.9}
-    .cta .secondary{background:#f0f0f0;color:#333}
-    .cta .secondary:hover{background:#e0e0e0}
-    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:28px;text-align:left}
+    .brand{font-family:var(--fh);font-weight:900;color:var(--gold);font-size:28px;margin-bottom:16px;background:var(--dark900);display:inline-block;padding:8px 20px;border-radius:12px}
+    .layout{display:grid;grid-template-columns:1fr;gap:24px;margin-top:24px;text-align:left}
+    @media(min-width:768px){.layout{grid-template-columns:1fr 1fr;align-items:start}}
+    .features{display:grid;gap:12px}
     .feature{background:#fff;border:1px solid #f0f0f0;padding:14px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
     .feature h4{margin:0 0 6px;font-size:15px;font-weight:700;color:#222}
     .feature div{font-size:13px;color:#888;line-height:1.5}
-    .brand{font-family:var(--fh);font-weight:900;color:var(--gold);font-size:28px;margin-bottom:16px}
+    .auth-card{background:#fff;border:1px solid #eee;border-radius:16px;padding:20px;box-shadow:0 4px 24px rgba(0,0,0,.06)}
+    .auth-tabs{display:flex;gap:8px;margin-bottom:16px}
+    .auth-tab{flex:1;padding:10px;border:none;border-radius:10px;background:#f4f4f4;font-weight:700;font-size:13px;color:#666}
+    .auth-tab.active{background:var(--dark900);color:var(--gold)}
+    .auth-field{margin-bottom:12px}
+    .auth-field label{display:block;font-size:12px;font-weight:700;color:#666;margin-bottom:4px}
+    .auth-field input{width:100%;border:2px solid #eee;border-radius:10px;padding:11px 14px;font-size:14px;outline:none}
+    .auth-field input:focus{border-color:var(--dark900)}
+    .auth-submit{width:100%;padding:13px;border:none;border-radius:10px;background:var(--dark900);color:var(--gold);font-weight:700;font-size:14px;margin-top:4px}
+    .auth-submit:hover{opacity:.92}
+    #auth-error{display:none;color:#e17055;font-size:13px;margin-bottom:12px;text-align:center}
+    .auth-hint{font-size:12px;color:#999;margin-top:12px;text-align:center;line-height:1.5}
   </style>
 </head>
 <body>
   <div class="landing">
     <div class="brand">Fit List</div>
     <div class="hero">Keep family gift ideas and sizes in one simple place</div>
-    <div class="sub">Share lists with relatives, avoid duplicate gifts, and always know the right size.</div>
-    <div class="cta">
-      <a class="primary" href="/app">Open the app</a>
-      <a class="secondary" href="/app">Sign in / Get started</a>
-    </div>
-    <div class="features">
-      <div class="feature"><h4>Share with family</h4><div>Invite grandparents or partners and let them claim gifts.</div></div>
-      <div class="feature"><h4>Sizes at a glance</h4><div>Track clothing sizes and style notes for each child.</div></div>
-      <div class="feature"><h4>Offline-friendly</h4><div>PWA-ready so lists stay available on your device.</div></div>
-      <div class="feature"><h4>Private by default</h4><div>Data is synced to your server — you control who sees it.</div></div>
+    <div class="sub">Share lists with your partner and relatives, avoid duplicate gifts, and always know the right size.</div>
+
+    <div class="layout">
+      <div class="features">
+        <div class="feature"><h4>Share with family</h4><div>Invite your spouse or grandparents and let them claim gifts on your list.</div></div>
+        <div class="feature"><h4>Sizes at a glance</h4><div>Track clothing sizes and style notes for each child.</div></div>
+        <div class="feature"><h4>Offline-friendly PWA</h4><div>Install on your phone; lists stay available on your home network.</div></div>
+        <div class="feature"><h4>Private by default</h4><div>Data stays on your server — you approve who can see your family.</div></div>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab active" data-tab="login">Log in</button>
+          <button type="button" class="auth-tab" data-tab="register">Create account</button>
+        </div>
+        <div id="auth-error"></div>
+
+        <div id="auth-login">
+          <form id="login-form">
+            <div class="auth-field">
+              <label for="login-username">Username</label>
+              <input id="login-username" type="text" autocomplete="username" required />
+            </div>
+            <div class="auth-field">
+              <label for="login-password">Password</label>
+              <input id="login-password" type="password" autocomplete="current-password" required />
+            </div>
+            <button type="submit" class="auth-submit">Log in to Fit List</button>
+          </form>
+        </div>
+
+        <div id="auth-register" style="display:none">
+          <form id="register-form">
+            <div class="auth-field">
+              <label for="register-display">Your name (shown to family)</label>
+              <input id="register-display" type="text" autocomplete="name" placeholder="e.g. Mom, Dad" />
+            </div>
+            <div class="auth-field">
+              <label for="register-username">Username</label>
+              <input id="register-username" type="text" autocomplete="username" required />
+            </div>
+            <div class="auth-field">
+              <label for="register-password">Password</label>
+              <input id="register-password" type="password" autocomplete="new-password" minlength="6" required />
+            </div>
+            <button type="submit" class="auth-submit">Create account</button>
+          </form>
+        </div>
+
+        <p class="auth-hint">Each parent can maintain a list and share it with the other. Use invite codes or approve access requests.</p>
+      </div>
     </div>
   </div>
+  <script src="/auth.js"></script>
 </body>
 </html>

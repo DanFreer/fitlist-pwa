@@ -1,13 +1,15 @@
-const CACHE = 'fitlist-v2';
+const CACHE = 'fitlist-v3';
 const ASSETS = [
-  './',
-  './index.html',
-  './app.html',
-  './styles.css',
-  './app.js',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
+  '/',
+  '/index.html',
+  '/app',
+  '/app.html',
+  '/styles.css',
+  '/app.js',
+  '/auth.js',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
   'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700&display=swap'
 ];
 

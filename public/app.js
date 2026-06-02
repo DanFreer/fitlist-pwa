@@ -38,10 +38,29 @@ function save() {
   }
 }
 
+function normalizeKid(k) {
+  if (!k.gifts) k.gifts = [];
+  k.gifts = k.gifts.map(g => ({
+    id: g.id,
+    text: g.text,
+    urgent: !!g.urgent,
+    claimedBy: g.claimedBy ?? g.claimed_by ?? null
+  }));
+  if (!k.buys) k.buys = [];
+  return k;
+}
+
 function loadLocal() {
+  if (session.token) {
+    kids = [];
+    return;
+  }
   try {
     const d = localStorage.getItem('fitlist-v3');
-    if (d) { kids = JSON.parse(d); return; }
+    if (d) {
+      kids = JSON.parse(d).map(normalizeKid);
+      return;
+    }
   } catch (e) {}
   kids = [
     { id:'demo-emma', name:'Emma', age:'8', emoji:'🦋', color:'#A29BFE', style:'Loves pastels & floral, prefers leggings over jeans, no scratchy tags',
@@ -147,7 +166,7 @@ async function fetchRemoteData() {
     }
     const data = await res.json();
     if (Array.isArray(data.kids)) {
-      kids = data.kids;
+      kids = data.kids.map(normalizeKid);
       saveLocal();
       if (kids.length && !getKid(activeId)) {
         activeId = kids[0].id;
@@ -178,18 +197,22 @@ async function syncRemote() {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
-  loadLocal();
-  renderSidebar();
-  renderUserBtns();
-  if (kids.length) selectKid(kids[0].id);
-  updateStats();
-  registerSW();
-  if (session.token) {
-    await refreshSession();
-  }
   if (!session.token) {
     window.location.href = '/';
     return;
+  }
+  loadLocal();
+  renderSidebar();
+  renderUserBtns();
+  updateStats();
+  registerSW();
+  await refreshSession();
+  if (kids.length) {
+    selectKid(activeId && getKid(activeId) ? activeId : kids[0].id);
+  } else {
+    document.getElementById('kid-header').style.display = 'none';
+    document.getElementById('tabs').style.display = 'none';
+    document.getElementById('no-kid').style.display = 'block';
   }
 });
 
@@ -246,7 +269,8 @@ function renderSidebar() {
 function renderUserBtns() {
   const el = document.getElementById('user-btns');
   if (session.username) {
-    el.innerHTML = `<button class="topbtn" onclick="logout()">Logout</button>`;
+    const label = session.displayName || session.username;
+    el.innerHTML = `<span class="stat-pill" style="background:rgba(255,255,255,.08);color:#ccc;max-width:100px;overflow:hidden;text-overflow:ellipsis" title="${label}">${label}</span><button class="topbtn" onclick="logout()">Logout</button>`;
   } else {
     el.innerHTML = '';
   }
@@ -254,20 +278,112 @@ function renderUserBtns() {
 
 function openConnectedAccounts() {
   document.getElementById('connected-modal').classList.add('open');
-  loadConnectedOwners();
+  loadSharingPanel();
 }
 
 function closeConnectedAccounts() { document.getElementById('connected-modal').classList.remove('open'); }
 
+function loadSharingPanel() {
+  loadPendingRequestsModal();
+  loadMembersList();
+  loadConnectedOwners();
+}
+
+function loadPendingRequestsModal() {
+  const listEl = document.getElementById('pending-requests-list');
+  listEl.innerHTML = 'Loading…';
+  fetchJson(`${API_BASE}/family/requests/incoming`)
+    .then(res => res.json())
+    .then(data => {
+      const requests = data.requests || [];
+      if (!requests.length) {
+        listEl.innerHTML = '<div class="empty">No pending requests.</div>';
+        return;
+      }
+      listEl.innerHTML = requests.map(r => `
+        <div class="family-pending-row">
+          <div>
+            <div style="font-weight:700">${r.requesterDisplayName || r.requesterUsername}</div>
+            <div style="font-size:12px;color:#888">@${r.requesterUsername}${r.message ? ' — ' + r.message : ''}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="modal-btn-primary" style="padding:6px 10px;font-size:11px" onclick="approveFamilyRequest(${r.id})">Approve</button>
+            <button class="modal-btn-secondary" style="padding:6px 10px;font-size:11px" onclick="denyFamilyRequest(${r.id})">Deny</button>
+          </div>
+        </div>
+      `).join('');
+    })
+    .catch(() => { listEl.innerHTML = '<div class="empty">Unable to load requests.</div>'; });
+}
+
+function loadMembersList() {
+  const listEl = document.getElementById('members-list');
+  listEl.innerHTML = 'Loading…';
+  fetchJson(`${API_BASE}/family/members`)
+    .then(res => res.json())
+    .then(data => {
+      const members = data.members || [];
+      if (!members.length) {
+        listEl.innerHTML = '<div class="empty">Nobody else has access yet.</div>';
+        return;
+      }
+      listEl.innerHTML = members.map(m => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid #f0f0f0;border-radius:10px;margin-bottom:8px;background:#fff;">
+          <div>
+            <div style="font-weight:700">${m.displayName || m.username}</div>
+            <div style="font-size:12px;color:#888">@${m.username}</div>
+          </div>
+          <button class="modal-btn-secondary" onclick="revokeMemberAccess(${m.memberId})">Revoke</button>
+        </div>
+      `).join('');
+    })
+    .catch(() => { listEl.innerHTML = '<div class="empty">Unable to load members.</div>'; });
+}
+
+function approveFamilyRequest(requestId) {
+  fetchJson(`${API_BASE}/family/requests/${requestId}/approve`, { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      if (data.ok) {
+        loadSharingPanel();
+        loadFamilyPendingRequests();
+      } else {
+        alert(data.error || 'Unable to approve');
+      }
+    });
+}
+
+function denyFamilyRequest(requestId) {
+  fetchJson(`${API_BASE}/family/requests/${requestId}/deny`, { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      if (data.ok) {
+        loadSharingPanel();
+        loadFamilyPendingRequests();
+      } else {
+        alert(data.error || 'Unable to deny');
+      }
+    });
+}
+
+function revokeMemberAccess(memberId) {
+  fetchJson(`${API_BASE}/family/access/${memberId}`, { method: 'DELETE' })
+    .then(res => res.json())
+    .then(data => {
+      if (data.ok) loadSharingPanel();
+      else alert(data.error || 'Unable to revoke');
+    });
+}
+
 function loadConnectedOwners() {
   const listEl = document.getElementById('connected-list');
   listEl.innerHTML = 'Loading…';
-  fetch(`${API_BASE}/family/owners`, { headers: { ...getAuthHeaders() } })
+  fetchJson(`${API_BASE}/family/owners`)
     .then(res => res.json())
     .then(data => {
       const owners = data.owners || [];
       if (!owners.length) {
-        listEl.innerHTML = '<div class="empty">No connected accounts.</div>';
+        listEl.innerHTML = '<div class="empty">You have not joined any other family lists.</div>';
         return;
       }
       listEl.innerHTML = owners.map(o => `
@@ -278,31 +394,26 @@ function loadConnectedOwners() {
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <button class="modal-btn-primary" onclick="(function(){ closeConnectedAccounts(); openFamilyView(); loadFamilyOwner(${o.ownerId}); })()">Browse</button>
-            <button class="modal-btn-secondary" onclick="removeFamilyAccess(${o.ownerId})">Remove</button>
+            <button class="modal-btn-secondary" onclick="removeFamilyAccess(${o.ownerId})">Leave</button>
           </div>
         </div>
       `).join('');
     })
-    .catch(() => { listEl.innerHTML = '<div class="empty">Unable to load connected accounts.</div>'; });
+    .catch(() => { listEl.innerHTML = '<div class="empty">Unable to load families.</div>'; });
 }
 
 function removeFamilyAccess(ownerId) {
-  const listEl = document.getElementById('connected-list');
-  listEl.innerHTML = 'Removing…';
-  fetch(`${API_BASE}/family/remove`, {
+  fetchJson(`${API_BASE}/family/remove`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ownerId })
   })
     .then(res => res.json())
     .then(data => {
-      if (data.ok) {
-        loadConnectedOwners();
-      } else {
-        listEl.innerHTML = `<div class="empty">${data.error || 'Unable to remove access'}</div>`;
-      }
+      if (data.ok) loadSharingPanel();
+      else alert(data.error || 'Unable to remove access');
     })
-    .catch(() => { listEl.innerHTML = '<div class="empty">Unable to remove access.</div>'; });
+    .catch(() => alert('Unable to remove access.'));
 }
 
 function getKid(id) { return kids.find(k => k.id === id); }
@@ -610,18 +721,21 @@ function openFamilyView() {
   const fv = document.getElementById('family-view');
   fv.style.display = 'flex'; fv.style.flexDirection = 'column';
   resetFamilyView();
+  if (session.token) loadFamilyPendingRequests();
 }
 function closeFamilyView() { document.getElementById('family-view').style.display = 'none'; }
 
 function resetFamilyView() {
   familyOwner = null;
   familyKids = [];
-  familyUser = '';
+  familyUser = session.displayName || session.username || '';
   document.getElementById('family-name-input').value = '';
   document.getElementById('family-account-input').value = '';
   document.getElementById('family-invite-input').value = '';
   document.getElementById('family-account-results').innerHTML = '';
   document.getElementById('family-account-message').textContent = '';
+  const pendingEl = document.getElementById('family-pending-requests');
+  if (pendingEl) { pendingEl.style.display = 'none'; pendingEl.innerHTML = ''; }
   if (session.token) {
     document.getElementById('family-name-step').style.display = 'none';
     document.getElementById('family-account-step').style.display = 'flex';
@@ -631,6 +745,37 @@ function resetFamilyView() {
   }
   document.getElementById('family-browse').classList.remove('open');
   document.getElementById('family-sub').textContent = 'Claim gifts so nobody buys the same thing twice';
+}
+
+function loadFamilyPendingRequests() {
+  const el = document.getElementById('family-pending-requests');
+  if (!el) return;
+  fetchJson(`${API_BASE}/family/requests/incoming`)
+    .then(res => res.json())
+    .then(data => {
+      const requests = data.requests || [];
+      if (!requests.length) {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+      }
+      el.style.display = 'block';
+      el.className = 'family-pending-box';
+      el.innerHTML = `<div style="font-weight:700;font-size:13px;margin-bottom:8px">Pending access requests</div>` +
+        requests.map(r => `
+          <div class="family-pending-row">
+            <div>
+              <div style="font-weight:700;font-size:13px">${r.requesterDisplayName || r.requesterUsername}</div>
+              <div style="font-size:11px;color:#888">@${r.requesterUsername}</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="modal-btn-primary" style="padding:5px 8px;font-size:11px" onclick="approveFamilyRequest(${r.id})">Approve</button>
+              <button class="modal-btn-secondary" style="padding:5px 8px;font-size:11px" onclick="denyFamilyRequest(${r.id})">Deny</button>
+            </div>
+          </div>
+        `).join('');
+    })
+    .catch(() => { el.style.display = 'none'; });
 }
 
 function startBrowsing() {
@@ -655,7 +800,7 @@ function searchFamilyAccount() {
   const messageEl = document.getElementById('family-account-message');
   resultsEl.innerHTML = 'Searching…';
   messageEl.textContent = '';
-  fetch(`${API_BASE}/users/search?term=${encodeURIComponent(term)}`)
+  fetchJson(`${API_BASE}/users/search?term=${encodeURIComponent(term)}`)
     .then(res => res.json())
     .then(data => {
       const users = data.users || [];
@@ -681,9 +826,9 @@ function searchFamilyAccount() {
 function requestFamilyAccess(ownerUsername) {
   const messageEl = document.getElementById('family-account-message');
   messageEl.textContent = 'Sending request…';
-  fetch(`${API_BASE}/family/request`, {
+  fetchJson(`${API_BASE}/family/request`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ownerUsername })
   })
     .then(res => res.json())
@@ -704,9 +849,9 @@ function joinFamilyByCode() {
   if (!code) return;
   const messageEl = document.getElementById('family-account-message');
   messageEl.textContent = 'Joining family…';
-  fetch(`${API_BASE}/family/join`, {
+  fetchJson(`${API_BASE}/family/join`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code })
   })
     .then(res => res.json())
@@ -732,10 +877,7 @@ function joinFamilyByCode() {
 function createFamilyInvite() {
   const codeEl = document.getElementById('family-invite-code');
   codeEl.textContent = 'Creating invite…';
-  fetch(`${API_BASE}/family/invite`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
-  })
+  fetchJson(`${API_BASE}/family/invite`, { method: 'POST' })
     .then(res => res.json())
     .then(data => {
       if (data.ok && data.code) {
@@ -751,7 +893,7 @@ function createFamilyInvite() {
 }
 
 function loadFamilyOwner(ownerId) {
-  fetch(`${API_BASE}/family/owner/${ownerId}`, { headers: { ...getAuthHeaders() } })
+  fetchJson(`${API_BASE}/family/owner/${ownerId}`)
     .then(res => res.json())
     .then(data => {
       if (data.error) {
@@ -759,13 +901,27 @@ function loadFamilyOwner(ownerId) {
         return;
       }
       familyOwner = data.owner;
-      familyKids = data.kids || [];
+      familyKids = (data.kids || []).map(normalizeKid);
+      familyUser = session.displayName || session.username || familyUser;
+      document.getElementById('family-account-step').style.display = 'none';
+      document.getElementById('family-browse').classList.add('open');
       document.getElementById('family-sub').textContent = `Browsing ${familyOwner.displayName}'s family`;
       renderFamilyList();
     })
     .catch(() => {
       document.getElementById('family-account-message').textContent = 'Unable to load family list.';
     });
+}
+
+async function updateRemoteGiftClaim(giftId, claimedBy) {
+  if (!familyOwner?.ownerId) return false;
+  const res = await fetchJson(`${API_BASE}/family/owner/${familyOwner.ownerId}/gifts/${giftId}/claim`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ claimedBy })
+  });
+  const data = await res.json();
+  return res.ok && data.ok;
 }
 
 function setFilter(f, btn) {
@@ -835,27 +991,59 @@ function renderFamilyList() {
   list.innerHTML = html;
 }
 
-function showFamilyClaimForm(gid) {
+function showFamilyClaimForm(gid, kidId) {
   document.querySelector(`#fclaim-row-${gid} .ill-buy-btn`).style.display = 'none';
   document.getElementById(`fclaim-form-${gid}`).style.display = 'flex';
-  document.getElementById(`fclaim-input-${gid}`).focus();
+  const input = document.getElementById(`fclaim-input-${gid}`);
+  if (!input.value) input.value = familyUser || session.displayName || session.username || '';
+  input.focus();
 }
 function hideFamilyClaimForm(gid) {
   document.querySelector(`#fclaim-row-${gid} .ill-buy-btn`).style.display = '';
   document.getElementById(`fclaim-form-${gid}`).style.display = 'none';
 }
-function submitFamilyClaim(gid, kidId) {
-  const who = document.getElementById(`fclaim-input-${gid}`).value.trim(); if (!who) return;
+async function submitFamilyClaim(gid, kidId) {
+  const who = document.getElementById(`fclaim-input-${gid}`).value.trim();
+  if (!who) return;
   const k = familyOwner ? familyKids.find(x => x.id === kidId) : getKid(kidId);
   if (!k) return;
-  const g = k.gifts.find(x => x.id === gid); if (!g) return;
-  g.claimedBy = who; save(); renderFamilyList(); updateStats();
+  const g = k.gifts.find(x => x.id === gid);
+  if (!g) return;
+  if (familyOwner) {
+    const ok = await updateRemoteGiftClaim(gid, who);
+    if (!ok) {
+      alert('Unable to save claim. Check your access.');
+      return;
+    }
+    g.claimedBy = who;
+    renderFamilyList();
+    return;
+  }
+  g.claimedBy = who;
+  save();
+  renderFamilyList();
+  updateStats();
   if (activeId === kidId) renderGifts(k);
 }
-function familyUnclaim(kidId, gid) {
+async function familyUnclaim(kidId, gid) {
   const k = familyOwner ? familyKids.find(x => x.id === kidId) : getKid(kidId);
-  const g = k.gifts.find(x => x.id === gid); if (!g) return;
-  g.claimedBy = null; save(); renderFamilyList(); updateStats();
+  if (!k) return;
+  const g = k.gifts.find(x => x.id === gid);
+  if (!g) return;
+  if (familyOwner) {
+    const ok = await updateRemoteGiftClaim(gid, null);
+    if (!ok) {
+      alert('Unable to remove claim.');
+      return;
+    }
+    g.claimedBy = null;
+    renderFamilyList();
+    return;
+  }
+  g.claimedBy = null;
+  save();
+  renderFamilyList();
+  updateStats();
   if (activeId === kidId) renderGifts(k);
 }
 

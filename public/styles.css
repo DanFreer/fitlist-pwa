@@ -254,11 +254,12 @@ textarea.field-input{resize:vertical;min-height:80px;line-height:1.6;}
   padding:7px 14px;font-weight:700;font-size:12px;white-space:nowrap;}
 #install-dismiss{background:none;border:none;color:#666;font-size:18px;}
 
-/* ── PIN modal specific ── */
-#pin-input{text-align:center;font-size:24px;letter-spacing:8px;width:100%;
-  border:2px solid #eee;border-radius:12px;padding:11px 20px;font-family:var(--ff);outline:none;}
-#pin-input.error{border-color:#ff6b6b;}
-#pin-error{color:#ff6b6b;font-size:12px;margin-top:6px;text-align:center;}
+.family-pending-box{background:#fff8f5;border:1px solid #f0e0d8;border-radius:12px;padding:12px;margin-bottom:12px;}
+.family-pending-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;}
+.family-pending-row:last-child{border-bottom:none;}
+.family-account-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid #f0f0f0;border-radius:10px;margin-bottom:8px;background:#fff;}
+.family-account-name{font-weight:700;font-size:14px;}
+.family-account-username{font-size:12px;color:#888;}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .fade-in{animation:fadeIn .2s ease;}
